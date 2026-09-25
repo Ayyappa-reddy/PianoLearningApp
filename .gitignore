@@ -21,3 +21,5 @@ src/generated/prisma/
 *.log
 Thumbs.db
 Desktop.ini
+
+.vercel
