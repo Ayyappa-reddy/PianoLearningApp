@@ -1,0 +1,23 @@
+# Dependencies and generated outputs
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+playwright-report/
+test-results/
+src/generated/prisma/
+
+# Local secrets and environment configuration
+.env
+.env.*
+!.env.example
+
+# Local editor / OS files
+.vscode/
+.idea/
+*.log
+Thumbs.db
+Desktop.ini

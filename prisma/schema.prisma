@@ -1,0 +1,592 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum WeeklyGoalKind {
+  MAIN
+  EXTRA
+}
+
+enum WeeklyGoalStatus {
+  NOT_TOUCHED
+  PARTIALLY_COMPLETED
+  COMPLETED
+}
+
+enum PersonalGoalKind {
+  LONG_TERM
+  PRACTICE
+}
+
+enum PersonalGoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  CANCELLED
+}
+
+enum GoalTargetPeriod {
+  WEEK
+  MONTH
+  YEAR
+  ALL_TIME
+}
+
+enum CarryForwardState {
+  PENDING
+  IN_WEEK
+  RESOLVED
+  DISMISSED
+}
+
+enum CarryForwardEventType {
+  LEARN_LATER_MARKED
+  CANDIDATE_CREATED
+  OFFERED
+  LATER
+  ADDED
+  AUTO_ADDED_THRESHOLD
+  RESOLVED
+  DISMISSED
+}
+
+enum ReviewCycleDecision {
+  NOT_OFFERED
+  PENDING
+  ACCEPTED
+  SKIPPED
+}
+
+enum ReviewStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ReviewEntryKind {
+  TOPIC
+  TASK
+}
+
+model OwnerProfile {
+  id           String   @id @default(uuid()) @db.Uuid
+  timezoneName String   @map("timezone_name")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("owner_profile")
+}
+
+model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  isDefault   Boolean   @default(false) @map("is_default")
+  archivedAt  DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  learningItems   LearningItem[]
+  songs           Song[]
+  practiceRecords PracticeRecord[]
+  milestones      Milestone[]
+
+  @@index([archivedAt])
+  @@map("category")
+}
+
+model LearningItem {
+  id               String         @id @default(uuid()) @db.Uuid
+  categoryId       String         @map("category_id") @db.Uuid
+  title            String
+  description      String?
+  status           ProgressStatus @default(NOT_STARTED)
+  startedOn        DateTime?      @map("started_on") @db.Date
+  completedOn      DateTime?      @map("completed_on") @db.Date
+  timeTakenMinutes Int?           @map("time_taken_minutes")
+  notes            String?
+  archivedAt       DateTime?      @map("archived_at") @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category        Category                 @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  lessons         Lesson[]
+  prerequisites   LearningPrerequisite[]   @relation("DependentLearningItem")
+  prerequisiteFor LearningPrerequisite[]   @relation("PrerequisiteLearningItem")
+  goalTargets     WeeklyGoal[]             @relation("GoalLearningItem")
+  practiceRecords PracticeRecord[]
+  progressChanges LearningProgressChange[]
+
+  @@index([categoryId, archivedAt])
+  @@index([status, completedOn])
+  @@map("learning_item")
+}
+
+model Lesson {
+  id               String         @id @default(uuid()) @db.Uuid
+  learningItemId   String         @map("learning_item_id") @db.Uuid
+  title            String
+  description      String?
+  status           ProgressStatus @default(NOT_STARTED)
+  startedOn        DateTime?      @map("started_on") @db.Date
+  completedOn      DateTime?      @map("completed_on") @db.Date
+  timeTakenMinutes Int?           @map("time_taken_minutes")
+  notes            String?
+  archivedAt       DateTime?      @map("archived_at") @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  learningItem    LearningItem             @relation(fields: [learningItemId], references: [id], onDelete: Restrict)
+  topics          Topic[]
+  goalTargets     WeeklyGoal[]             @relation("GoalLesson")
+  practiceRecords PracticeRecord[]
+  progressChanges LearningProgressChange[]
+
+  @@index([learningItemId, archivedAt])
+  @@index([status, completedOn])
+  @@map("lesson")
+}
+
+model Topic {
+  id               String         @id @default(uuid()) @db.Uuid
+  lessonId         String         @map("lesson_id") @db.Uuid
+  title            String
+  description      String?
+  sortOrder        Int            @map("sort_order")
+  status           ProgressStatus @default(NOT_STARTED)
+  startedOn        DateTime?      @map("started_on") @db.Date
+  completedOn      DateTime?      @map("completed_on") @db.Date
+  timeTakenMinutes Int?           @map("time_taken_minutes")
+  notes            String?
+  archivedAt       DateTime?      @map("archived_at") @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  lesson          Lesson                   @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  goalTargets     WeeklyGoal[]             @relation("GoalTopic")
+  practiceRecords PracticeRecord[]
+  reviewEntries   ReviewEntry[]
+  progressChanges LearningProgressChange[]
+
+  @@unique([lessonId, sortOrder])
+  @@index([status, completedOn])
+  @@map("topic")
+}
+
+model LearningPrerequisite {
+  learningItemId     String   @map("learning_item_id") @db.Uuid
+  prerequisiteItemId String   @map("prerequisite_item_id") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  learningItem     LearningItem @relation("DependentLearningItem", fields: [learningItemId], references: [id], onDelete: Restrict)
+  prerequisiteItem LearningItem @relation("PrerequisiteLearningItem", fields: [prerequisiteItemId], references: [id], onDelete: Restrict)
+
+  @@id([learningItemId, prerequisiteItemId])
+  @@index([prerequisiteItemId, learningItemId])
+  @@map("learning_prerequisite")
+}
+
+model Song {
+  id          String         @id @default(uuid()) @db.Uuid
+  categoryId  String?        @map("category_id") @db.Uuid
+  title       String
+  composer    String?
+  difficulty  Int?
+  status      ProgressStatus @default(NOT_STARTED)
+  addedOn     DateTime       @map("added_on") @db.Date
+  startedOn   DateTime?      @map("started_on") @db.Date
+  completedOn DateTime?      @map("completed_on") @db.Date
+  rating      Int?
+  notes       String?
+  archivedAt  DateTime?      @map("archived_at") @db.Timestamptz(6)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category        Category?                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  sections        SongSection[]
+  goalTargets     WeeklyGoal[]             @relation("GoalSong")
+  practiceRecords PracticeRecord[]
+  progressChanges LearningProgressChange[]
+
+  @@index([status, completedOn])
+  @@index([categoryId, status])
+  @@map("song")
+}
+
+model SongSection {
+  id          String         @id @default(uuid()) @db.Uuid
+  songId      String         @map("song_id") @db.Uuid
+  title       String
+  sortOrder   Int            @map("sort_order")
+  status      ProgressStatus @default(NOT_STARTED)
+  startedOn   DateTime?      @map("started_on") @db.Date
+  completedOn DateTime?      @map("completed_on") @db.Date
+  rating      Int?
+  notes       String?
+  archivedAt  DateTime?      @map("archived_at") @db.Timestamptz(6)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  song            Song                     @relation(fields: [songId], references: [id], onDelete: Restrict)
+  goalTargets     WeeklyGoal[]             @relation("GoalSongSection")
+  practiceRecords PracticeRecord[]
+  progressChanges LearningProgressChange[]
+
+  @@unique([songId, sortOrder])
+  @@index([status, completedOn])
+  @@map("song_section")
+}
+
+model WeeklyPeriod {
+  id                   String    @id @default(uuid()) @db.Uuid
+  sequenceNo           Int       @unique @map("sequence_no")
+  startOn              DateTime  @unique @map("start_on") @db.Date
+  timezoneName         String    @map("timezone_name")
+  mainGoalsCompletedAt DateTime? @map("main_goals_completed_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  goals              WeeklyGoal[]
+  firstForCycle      ReviewCycle?            @relation("CycleFirstWeek")
+  secondForCycle     ReviewCycle?            @relation("CycleSecondWeek")
+  thirdForCycle      ReviewCycle?            @relation("CycleThirdWeek")
+  carryForwardEvents GoalCarryForwardEvent[]
+
+  @@index([startOn])
+  @@index([mainGoalsCompletedAt])
+  @@map("weekly_period")
+}
+
+model WeeklyGoal {
+  id             String           @id @default(uuid()) @db.Uuid
+  weeklyPeriodId String           @map("weekly_period_id") @db.Uuid
+  kind           WeeklyGoalKind
+  title          String
+  notes          String?
+  status         WeeklyGoalStatus @default(NOT_TOUCHED)
+  startedOn      DateTime?        @map("started_on") @db.Date
+  completedOn    DateTime?        @map("completed_on") @db.Date
+  rating         Int?
+  learningItemId String?          @map("learning_item_id") @db.Uuid
+  lessonId       String?          @map("lesson_id") @db.Uuid
+  topicId        String?          @map("topic_id") @db.Uuid
+  songId         String?          @map("song_id") @db.Uuid
+  songSectionId  String?          @map("song_section_id") @db.Uuid
+  personalGoalId String?          @map("personal_goal_id") @db.Uuid
+  reviewEntryId  String?          @map("review_entry_id") @db.Uuid
+  sourceGoalId   String?          @map("source_goal_id") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  weeklyPeriod            WeeklyPeriod               @relation(fields: [weeklyPeriodId], references: [id], onDelete: Restrict)
+  learningItem            LearningItem?              @relation("GoalLearningItem", fields: [learningItemId], references: [id], onDelete: Restrict)
+  lesson                  Lesson?                    @relation("GoalLesson", fields: [lessonId], references: [id], onDelete: Restrict)
+  topic                   Topic?                     @relation("GoalTopic", fields: [topicId], references: [id], onDelete: Restrict)
+  song                    Song?                      @relation("GoalSong", fields: [songId], references: [id], onDelete: Restrict)
+  songSection             SongSection?               @relation("GoalSongSection", fields: [songSectionId], references: [id], onDelete: Restrict)
+  personalGoal            PersonalGoal?              @relation(fields: [personalGoalId], references: [id], onDelete: Restrict)
+  reviewEntry             ReviewEntry?               @relation(fields: [reviewEntryId], references: [id], onDelete: Restrict)
+  sourceGoal              WeeklyGoal?                @relation("GoalSource", fields: [sourceGoalId], references: [id], onDelete: Restrict)
+  copiedGoals             WeeklyGoal[]               @relation("GoalSource")
+  statusChanges           WeeklyGoalStatusChange[]
+  practiceRecords         WeeklyGoalPracticeRecord[]
+  originatedCarryForwards GoalCarryForward[]         @relation("CarryForwardOrigin")
+  currentCarryForwards    GoalCarryForward[]         @relation("CarryForwardCurrent")
+  carryForwardFromEvents  GoalCarryForwardEvent[]    @relation("CarryForwardFromGoal")
+  carryForwardToEvents    GoalCarryForwardEvent[]    @relation("CarryForwardToGoal")
+
+  @@unique([weeklyPeriodId, id])
+  @@index([weeklyPeriodId, kind, status])
+  @@index([status, completedOn])
+  @@index([learningItemId])
+  @@index([lessonId])
+  @@index([topicId])
+  @@index([songId])
+  @@index([songSectionId])
+  @@index([personalGoalId])
+  @@index([reviewEntryId])
+  @@index([sourceGoalId])
+  @@map("weekly_goal")
+}
+
+model WeeklyGoalStatusChange {
+  id             String            @id @default(uuid()) @db.Uuid
+  weeklyGoalId   String            @map("weekly_goal_id") @db.Uuid
+  fromStatus     WeeklyGoalStatus? @map("from_status")
+  toStatus       WeeklyGoalStatus  @map("to_status")
+  effectiveOn    DateTime?         @map("effective_on") @db.Date
+  recordedAt     DateTime          @default(now()) @map("recorded_at") @db.Timestamptz(6)
+  correctionNote String?           @map("correction_note")
+
+  weeklyGoal WeeklyGoal @relation(fields: [weeklyGoalId], references: [id], onDelete: Restrict)
+
+  @@index([weeklyGoalId, recordedAt])
+  @@map("weekly_goal_status_change")
+}
+
+model LearningProgressChange {
+  id             String          @id @default(uuid()) @db.Uuid
+  learningItemId String?         @map("learning_item_id") @db.Uuid
+  lessonId       String?         @map("lesson_id") @db.Uuid
+  topicId        String?         @map("topic_id") @db.Uuid
+  songId         String?         @map("song_id") @db.Uuid
+  songSectionId  String?         @map("song_section_id") @db.Uuid
+  fromStatus     ProgressStatus? @map("from_status")
+  toStatus       ProgressStatus  @map("to_status")
+  effectiveOn    DateTime?       @map("effective_on") @db.Date
+  recordedAt     DateTime        @default(now()) @map("recorded_at") @db.Timestamptz(6)
+  correctionNote String?         @map("correction_note")
+
+  learningItem LearningItem? @relation(fields: [learningItemId], references: [id], onDelete: Restrict)
+  lesson       Lesson?       @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  topic        Topic?        @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  song         Song?         @relation(fields: [songId], references: [id], onDelete: Restrict)
+  songSection  SongSection?  @relation(fields: [songSectionId], references: [id], onDelete: Restrict)
+
+  @@index([learningItemId, recordedAt])
+  @@index([lessonId, recordedAt])
+  @@index([topicId, recordedAt])
+  @@index([songId, recordedAt])
+  @@index([songSectionId, recordedAt])
+  @@map("learning_progress_change")
+}
+
+model PersonalGoal {
+  id                 String             @id @default(uuid()) @db.Uuid
+  kind               PersonalGoalKind
+  title              String
+  notes              String?
+  status             PersonalGoalStatus @default(ACTIVE)
+  startsOn           DateTime?          @map("starts_on") @db.Date
+  targetOn           DateTime?          @map("target_on") @db.Date
+  completedOn        DateTime?          @map("completed_on") @db.Date
+  targetMinutes      Int?               @map("target_minutes")
+  targetPracticeDays Int?               @map("target_practice_days")
+  targetPeriod       GoalTargetPeriod?  @map("target_period")
+  rating             Int?
+  archivedAt         DateTime?          @map("archived_at") @db.Timestamptz(6)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  weeklyGoals WeeklyGoal[]
+
+  @@index([kind, status, targetOn])
+  @@map("personal_goal")
+}
+
+model PracticeRecord {
+  id                 String   @id @default(uuid()) @db.Uuid
+  practicedOn        DateTime @map("practiced_on") @db.Date
+  durationMinutes    Int      @map("duration_minutes")
+  categoryId         String?  @map("category_id") @db.Uuid
+  learningItemId     String?  @map("learning_item_id") @db.Uuid
+  lessonId           String?  @map("lesson_id") @db.Uuid
+  topicId            String?  @map("topic_id") @db.Uuid
+  songId             String?  @map("song_id") @db.Uuid
+  songSectionId      String?  @map("song_section_id") @db.Uuid
+  rating             Int?
+  notes              String?
+  recordingReference String?  @map("recording_reference")
+  recordedAt         DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category     Category?                  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  learningItem LearningItem?              @relation(fields: [learningItemId], references: [id], onDelete: Restrict)
+  lesson       Lesson?                    @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  topic        Topic?                     @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  song         Song?                      @relation(fields: [songId], references: [id], onDelete: Restrict)
+  songSection  SongSection?               @relation(fields: [songSectionId], references: [id], onDelete: Restrict)
+  weeklyGoals  WeeklyGoalPracticeRecord[]
+
+  @@index([practicedOn])
+  @@index([categoryId, practicedOn])
+  @@index([learningItemId, practicedOn])
+  @@index([lessonId, practicedOn])
+  @@index([topicId, practicedOn])
+  @@index([songId, practicedOn])
+  @@index([songSectionId, practicedOn])
+  @@index([rating, practicedOn])
+  @@map("practice_record")
+}
+
+model WeeklyGoalPracticeRecord {
+  weeklyGoalId     String   @map("weekly_goal_id") @db.Uuid
+  practiceRecordId String   @map("practice_record_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  weeklyGoal     WeeklyGoal     @relation(fields: [weeklyGoalId], references: [id], onDelete: Restrict)
+  practiceRecord PracticeRecord @relation(fields: [practiceRecordId], references: [id], onDelete: Restrict)
+
+  @@id([weeklyGoalId, practiceRecordId])
+  @@index([practiceRecordId])
+  @@map("weekly_goal_practice_record")
+}
+
+model GoalCarryForward {
+  id              String            @id @default(uuid()) @db.Uuid
+  originGoalId    String            @map("origin_goal_id") @db.Uuid
+  currentGoalId   String            @map("current_goal_id") @db.Uuid
+  state           CarryForwardState @default(PENDING)
+  firstDeferredAt DateTime?         @map("first_deferred_at") @db.Timestamptz(6)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  originGoal  WeeklyGoal              @relation("CarryForwardOrigin", fields: [originGoalId], references: [id], onDelete: Restrict)
+  currentGoal WeeklyGoal              @relation("CarryForwardCurrent", fields: [currentGoalId], references: [id], onDelete: Restrict)
+  events      GoalCarryForwardEvent[]
+
+  @@index([state, createdAt])
+  @@index([originGoalId])
+  @@index([currentGoalId])
+  @@map("goal_carry_forward")
+}
+
+model GoalCarryForwardEvent {
+  id             String                @id @default(uuid()) @db.Uuid
+  carryForwardId String                @map("carry_forward_id") @db.Uuid
+  planningWeekId String                @map("planning_week_id") @db.Uuid
+  eventType      CarryForwardEventType @map("event_type")
+  fromGoalId     String?               @map("from_goal_id") @db.Uuid
+  toGoalId       String?               @map("to_goal_id") @db.Uuid
+  recordedAt     DateTime              @default(now()) @map("recorded_at") @db.Timestamptz(6)
+
+  carryForward GoalCarryForward @relation(fields: [carryForwardId], references: [id], onDelete: Restrict)
+  planningWeek WeeklyPeriod     @relation(fields: [planningWeekId], references: [id], onDelete: Restrict)
+  fromGoal     WeeklyGoal?      @relation("CarryForwardFromGoal", fields: [fromGoalId], references: [id], onDelete: Restrict)
+  toGoal       WeeklyGoal?      @relation("CarryForwardToGoal", fields: [toGoalId], references: [id], onDelete: Restrict)
+
+  @@index([carryForwardId, recordedAt])
+  @@index([planningWeekId, eventType])
+  @@index([fromGoalId])
+  @@index([toGoalId])
+  @@map("goal_carry_forward_event")
+}
+
+model ReviewCycle {
+  id               String              @id @default(uuid()) @db.Uuid
+  cycleNumber      Int                 @unique @map("cycle_number")
+  firstWeekId      String              @unique @map("first_week_id") @db.Uuid
+  secondWeekId     String              @unique @map("second_week_id") @db.Uuid
+  thirdWeekId      String              @unique @map("third_week_id") @db.Uuid
+  goalsCompletedAt DateTime?           @map("goals_completed_at") @db.Timestamptz(6)
+  offeredAt        DateTime?           @map("offered_at") @db.Timestamptz(6)
+  decision         ReviewCycleDecision @default(NOT_OFFERED)
+  decidedAt        DateTime?           @map("decided_at") @db.Timestamptz(6)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  firstWeek  WeeklyPeriod @relation("CycleFirstWeek", fields: [firstWeekId], references: [id], onDelete: Restrict)
+  secondWeek WeeklyPeriod @relation("CycleSecondWeek", fields: [secondWeekId], references: [id], onDelete: Restrict)
+  thirdWeek  WeeklyPeriod @relation("CycleThirdWeek", fields: [thirdWeekId], references: [id], onDelete: Restrict)
+  review     Review?
+
+  @@index([decision, offeredAt])
+  @@map("review_cycle")
+}
+
+model Review {
+  id              String       @id @default(uuid()) @db.Uuid
+  reviewCycleId   String       @unique @map("review_cycle_id") @db.Uuid
+  startsOn        DateTime     @map("starts_on") @db.Date
+  endsOn          DateTime     @map("ends_on") @db.Date
+  durationMinutes Int?         @map("duration_minutes")
+  status          ReviewStatus @default(IN_PROGRESS)
+  rating          Int?
+  notes           String?
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  reviewCycle ReviewCycle   @relation(fields: [reviewCycleId], references: [id], onDelete: Restrict)
+  entries     ReviewEntry[]
+
+  @@index([startsOn, status])
+  @@map("review")
+}
+
+model ReviewEntry {
+  id        String          @id @default(uuid()) @db.Uuid
+  reviewId  String          @map("review_id") @db.Uuid
+  kind      ReviewEntryKind
+  title     String
+  topicId   String?         @map("topic_id") @db.Uuid
+  result    String?
+  rating    Int?
+  sortOrder Int             @map("sort_order")
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  review      Review       @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+  topic       Topic?       @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  goalTargets WeeklyGoal[]
+
+  @@unique([reviewId, sortOrder])
+  @@index([topicId])
+  @@map("review_entry")
+}
+
+model LoginDay {
+  id           String   @id @default(uuid()) @db.Uuid
+  localDate    DateTime @unique @map("local_date") @db.Date
+  timezoneName String   @map("timezone_name")
+  firstLoginAt DateTime @map("first_login_at") @db.Timestamptz(6)
+  lastLoginAt  DateTime @map("last_login_at") @db.Timestamptz(6)
+
+  @@index([firstLoginAt])
+  @@map("login_day")
+}
+
+model AchievementDefinition {
+  id           String   @id @default(uuid()) @db.Uuid
+  key          String   @unique
+  name         String
+  description  String?
+  evaluatorKey String   @map("evaluator_key")
+  ruleConfig   Json     @map("rule_config") @db.JsonB
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  awards AwardedAchievement[]
+
+  @@index([isActive, evaluatorKey])
+  @@map("achievement_definition")
+}
+
+model AwardedAchievement {
+  id                      String   @id @default(uuid()) @db.Uuid
+  achievementDefinitionId String   @unique @map("achievement_definition_id") @db.Uuid
+  earnedAt                DateTime @map("earned_at") @db.Timestamptz(6)
+  definitionSnapshot      Json     @map("definition_snapshot") @db.JsonB
+  evidenceSnapshot        Json     @map("evidence_snapshot") @db.JsonB
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  definition AchievementDefinition @relation(fields: [achievementDefinitionId], references: [id], onDelete: Restrict)
+
+  @@index([earnedAt])
+  @@map("awarded_achievement")
+}
+
+model Milestone {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  happenedOn  DateTime @map("happened_on") @db.Date
+  categoryId  String?  @map("category_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([happenedOn])
+  @@index([categoryId, happenedOn])
+  @@map("milestone")
+}
