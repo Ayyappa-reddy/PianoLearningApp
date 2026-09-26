@@ -1,0 +1,8 @@
+import { getPrismaClient } from "@/infrastructure/database/prisma";
+import { createItemAction } from "@/app/catalog/actions";
+import { PageTitle, Panel, Notice, inputClass, buttonClass } from "@/app/workflows/components";
+export const dynamic = "force-dynamic";
+export default async function MainTopicCreatePage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
+  const [categories, params] = await Promise.all([getPrismaClient().category.findMany({where:{archivedAt:null},orderBy:{name:"asc"}}), searchParams]);
+  return <><PageTitle title="Create a Main Topic"/><Notice error={params.error} success={params.success}/><Panel title="Main Topic details"><form action={createItemAction} className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-sm">Category<select required name="categoryId" className={inputClass}><option value="">Choose a category</option>{categories.map((category)=><option key={category.id} value={category.id}>{category.name}</option>)}</select></label><input type="hidden" name="status" value="NOT_STARTED"/><label className="grid gap-1 text-sm">Title<input required name="title" className={inputClass}/></label><label className="grid gap-1 text-sm sm:col-span-2">Description<textarea name="description" className={inputClass}/></label><button className={buttonClass+" justify-self-start"}>Create Main Topic</button></form>{!categories.length&&<p className="mt-3 text-sm">Create a category in <a className="underline" href="/learn">Learn</a> first.</p>}</Panel></>;
+}

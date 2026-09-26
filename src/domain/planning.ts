@@ -36,6 +36,31 @@ export function endDateExclusive(startDate: string): string {
   return formatDateOnly(start);
 }
 
+export function isInsideWeeklyPeriod(date: string, startDate: string): boolean {
+  const endDate = endDateExclusive(startDate);
+  return date >= startDate && date < endDate;
+}
+
+export function periodsOverlap(firstStart: string, secondStart: string): boolean {
+  return firstStart < endDateExclusive(secondStart) && secondStart < endDateExclusive(firstStart);
+}
+
+export function targetKeyForGoal(target: Record<string, string | null | undefined>): string | null {
+  const keys = ["learningItemId", "lessonId", "topicId", "songId", "songSectionId", "personalGoalId", "reviewEntryId"];
+  const values = keys.flatMap((key) => target[key] ? [[key, target[key] as string] as const] : []);
+  if (values.length > 1) throw new Error("A weekly goal can have no more than one linked target.");
+  return values.length ? `${values[0][0]}:${values[0][1]}` : null;
+}
+
+export function preserveCompletionTimestamp(
+  existing: Date | null,
+  goals: readonly WeeklyGoalSnapshot[],
+  now: Date,
+): Date | null {
+  if (existing) return existing;
+  return isWeeklyPeriodGoalsCompleted(goals) ? now : null;
+}
+
 export function isWeeklyPeriodGoalsCompleted(
   goals: readonly WeeklyGoalSnapshot[],
 ): boolean {

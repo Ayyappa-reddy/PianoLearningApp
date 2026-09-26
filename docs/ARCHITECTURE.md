@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Proposed architecture aligned with finalized product decisions. Design only: no application, Prisma schema, migration, database, or authentication has been implemented.
+**Status:** Modular-monolith architecture implemented for the current functional workflows. Authentication and final UI/UX redesign remain deferred.
 
 ## Goals and constraints
 
@@ -68,6 +68,13 @@ Prefer archive flags/timestamps over deleting content already referenced by hist
 ## Security and identity
 
 The data model represents one owner/profile and avoids premature multi-tenant complexity. Cross-device production access requires a real sign-in/session mechanism and secure server-side authorization before deployment. This task intentionally does not select or implement authentication. Never expose a PostgreSQL connection string or Prisma Client to browser code.
+
+## Implementation notes
+
+- The initial owner profile uses `Europe/Berlin`, matching the configured development environment; the owner can change it in Settings. Weekly periods snapshot the profile timezone at creation.
+- Because authentication is intentionally deferred, the current streak tracker records one login day when a browser loads the application shell. It does not identify or authenticate a person and is suitable only for a private personal deployment.
+- Database-backed routes render on request rather than during static build, so building the application does not require a live database connection or write profile/achievement rows.
+- JSON export includes all modeled tables and profile metadata. CSV export provides one CSV per logical dataset inside a ZIP archive.
 
 ## Important risks
 

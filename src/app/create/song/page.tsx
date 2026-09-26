@@ -1,0 +1,9 @@
+import { getPrismaClient } from "@/infrastructure/database/prisma";
+import { createSongAction } from "@/app/workflows/actions";
+import { PageTitle, Panel, Notice, inputClass, buttonClass } from "@/app/workflows/components";
+export const dynamic = "force-dynamic";
+export default async function SongCreatePage({searchParams}:{searchParams:Promise<{error?:string;success?:string}>}) {
+ const [categories,params]=await Promise.all([getPrismaClient().category.findMany({where:{archivedAt:null},orderBy:{name:"asc"}}),searchParams]);
+ const today=new Date().toISOString().slice(0,10);
+ return <><PageTitle title="Add a Song" description="Difficulty and progress are chosen by you."/><Notice error={params.error} success={params.success}/><Panel title="Song details"><form action={createSongAction} className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-sm">Title<input required name="title" className={inputClass}/></label><label className="grid gap-1 text-sm">Composer<input name="composer" className={inputClass}/></label><label className="grid gap-1 text-sm">Category<select name="categoryId" className={inputClass}><option value="">None</option>{categories.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label className="grid gap-1 text-sm">Difficulty (your rating)<select name="difficulty" className={inputClass}><option value="">Not rated</option>{[1,2,3,4,5].map((n)=><option key={n}>{n}</option>)}</select></label><label className="grid gap-1 text-sm">Added on<input required type="date" name="addedOn" defaultValue={today} className={inputClass}/></label><input type="hidden" name="status" value="NOT_STARTED"/><label className="grid gap-1 text-sm sm:col-span-2">Notes<textarea name="notes" className={inputClass}/></label><button className={buttonClass+" justify-self-start"}>Add Song</button></form></Panel></>;
+}

@@ -4,7 +4,7 @@ A personal, cross-device web application for recording and reviewing one person'
 
 ## Project status
 
-**Foundation implementation.** The Next.js App Router shell, domain-rule tests, Prisma schema, and initial PostgreSQL migration are being established. A live database migration and connection check require the owner's PostgreSQL connection strings; no credentials are stored in the repository. Product workflows remain for later roadmap phases.
+**Functional implementation in progress.** The catalog, weekly planning and carry-forward, learning progress, manual practice, songs/sections, optional reviews, streaks, achievements/milestones, progress views, and JSON/CSV export are implemented on the documented schema. UI/UX refinement and production authentication remain separate follow-up work.
 
 ## Planned technology
 
@@ -46,7 +46,7 @@ Requirements and domain behavior remain defined by [the project specification](d
 4. Apply the initial migration with `npm run prisma:migrate:dev`.
 5. Start the application with `npm run dev` and open `http://localhost:3000`.
 
-The home and system-status pages can run before a database is configured; the status page reports the database as unavailable without exposing connection details. Database-backed behavior is server-only. Authentication has not been implemented, so do not expose a deployment to the public internet until the documented access-control decision is implemented.
+The database-backed pages require the configured PostgreSQL database; the system-status page reports availability without exposing connection details. Database access is server-only. For streak tracking, a successful application load records a daily login event; this is activity tracking, not authentication. Authentication has not been implemented, so do not expose a deployment to the public internet until access control is added.
 
 Useful checks:
 

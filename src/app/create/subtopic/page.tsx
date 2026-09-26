@@ -1,0 +1,8 @@
+import { getPrismaClient } from "@/infrastructure/database/prisma";
+import { createLessonAction } from "@/app/catalog/actions";
+import { PageTitle, Panel, Notice, inputClass, buttonClass } from "@/app/workflows/components";
+export const dynamic = "force-dynamic";
+export default async function SubtopicCreatePage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
+  const [items, params] = await Promise.all([getPrismaClient().learningItem.findMany({where:{archivedAt:null,category:{archivedAt:null}},include:{category:true},orderBy:{title:"asc"}}), searchParams]);
+  return <><PageTitle title="Create a Subtopic" description="A Subtopic is stored as a lesson under its Main Topic."/><Notice error={params.error} success={params.success}/><Panel title="Subtopic details"><form action={createLessonAction} className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-sm sm:col-span-2">Main Topic<select required name="learningItemId" className={inputClass}><option value="">Choose a Main Topic</option>{items.map((item)=><option key={item.id} value={item.id}>{item.category.name+" → "+item.title}</option>)}</select></label><input type="hidden" name="status" value="NOT_STARTED"/><label className="grid gap-1 text-sm">Title<input required name="title" className={inputClass}/></label><label className="grid gap-1 text-sm sm:col-span-2">Description<textarea name="description" className={inputClass}/></label><button className={buttonClass+" justify-self-start"}>Create Subtopic</button></form>{!items.length&&<p className="mt-3 text-sm">Create a Main Topic first.</p>}</Panel></>;
+}
